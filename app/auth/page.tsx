@@ -1,3 +1,4 @@
+'use client'
 
 import { auth } from "@/auth"
 import LoginForm from "@/components/auth/login-form"
@@ -10,12 +11,8 @@ import {
 } from "@/components/ui/tabs"
 import { redirect } from "next/navigation";
 
-export default async function Page(){
-    const session = await auth();
-
-    if(session){
-       // redirect('/home')
-    }
+export default function Page(){
+   
     return(
         <main className="w-screen h-screen flex items-center justify-center bg-stone-200">
             <Tabs defaultValue="login" className="w-[400px]">
