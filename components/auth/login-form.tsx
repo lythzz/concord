@@ -21,8 +21,12 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useState, useTransition } from "react"
 import clsx from "clsx"
 import { login } from "@/lib/actions"
+import { FormError, FormSuccess } from "./form-warnings"
+import Link from "next/link"
 
 export default function LoginForm(){
+    const [error, setError] = useState<string | undefined>('')
+    const [success, setSuccess] = useState<string | undefined>('')
     const [isPending, startTransition] = useTransition();
     const [passwordSecret, setPasswordSecret] = useState(true)
     const toggleShowPassword = () => setPasswordSecret(!passwordSecret);
@@ -37,14 +41,17 @@ export default function LoginForm(){
     const onSubmit = (values : z.infer<typeof LoginSchema>) => {
         startTransition(() => {
             login(values)
+                .then((data) => {
+                    setError(data.error)
+                    setSuccess(data.success)
+                })
         })
     }
 
     return(   
             <Card className="relative">
-                <BarLoader loading={isPending} className="absolute rounded-t-sm top-0" width={400}/>
-            <CardHeader className="relative">
-                
+                <div className="h-1"><BarLoader loading={isPending} className="absolute rounded-t-sm top-0" width={400}/></div>
+            <CardHeader>
                 <CardTitle>Login</CardTitle>
                 <CardDescription>
                     Log in into an already existing account
@@ -99,6 +106,11 @@ export default function LoginForm(){
                                 />
                                 
                             </div>
+                            <FormError message={error}/>
+                            <FormSuccess message={success}/>
+                            {!!error && <div className="text-sm space-y-0 hover:underline">
+                                <Link href={'/reset-password'}>Forgot your password?</Link>
+                            </div>}
                             <Button type="submit" className="w-full bg-sky-600 hover:bg-sky-700">Log in</Button>
                         </form>
                     </Form>

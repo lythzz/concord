@@ -20,9 +20,13 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "../ui/form"
 import { useState, useTransition } from "react"
 import clsx from "clsx"
-import { login } from "@/lib/actions"
+import { findUserByName, login, register } from "@/lib/actions"
+import { FormError, FormSuccess } from "./form-warnings"
+import { useDebouncedCallback } from 'use-debounce'
 
 export default function RegisterForm(){
+    const [error, setError] = useState<string | undefined>('')
+    const [success, setSuccess] = useState<string | undefined>('')
     const [isPending, startTransition] = useTransition();
     const [passwordSecret, setPasswordSecret] = useState(true)
     const toggleShowPassword = () => setPasswordSecret(!passwordSecret);
@@ -36,13 +40,26 @@ export default function RegisterForm(){
 
     const onSubmit = (values : z.infer<typeof RegisterSchema>) => {
         startTransition(() => {
-            login(values)
+            register(values)
+                .then((data) => {
+                    setError(data.error)
+                    setSuccess(data.success)
+                })
         })
     }
 
+    const checkName = useDebouncedCallback((name: string) => {
+        findUserByName(name)
+            .then((user) => {
+                if(user){
+                    setError('Name already in use!')
+                }
+            })
+    }, 400)
+
     return(   
             <Card className="relative">
-                <BarLoader loading={isPending} className="absolute rounded-t-sm top-0" width={400}/>
+                <div className="h-1"><BarLoader loading={isPending} className="absolute rounded-t-sm top-0" width={400}/></div>
             <CardHeader className="relative">
                 
                 <CardTitle>Register</CardTitle>
@@ -76,7 +93,8 @@ export default function RegisterForm(){
                                             <FormMessage/>
                                         </FormItem>
                                     )}
-                                /><FormField
+                                />
+                                <FormField
                                     control={form.control}
                                     name="username"
                                     render={({field}) => (
@@ -85,9 +103,10 @@ export default function RegisterForm(){
                                             <FormControl>
                                                 <Input
                                                 {...field}
+                                                //onChange={(e)=>checkName(e.target.value)}
                                                 disabled={isPending}
                                                 type="text"
-                                                placeholder="example@domain.com"
+                                                placeholder="Enter your username"
                                                 />
                                             </FormControl>
                                             <FormMessage/>
@@ -113,30 +132,11 @@ export default function RegisterForm(){
                                             <FormMessage/>
                                         </FormItem>
                                     )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="confirm_password"
-                                    render={({field}) => (
-                                        <FormItem className="relative">
-                                            <FormLabel>Password</FormLabel>
-                                            <FaEye onClick={toggleShowPassword}  className={clsx("scale-150 absolute right-3 top-9 hover:cursor-pointer hover:text-slate-700", !passwordSecret && 'hidden')}/>
-                                            <FaEyeSlash onClick={toggleShowPassword}  className={clsx('scale-150 absolute right-3 top-9 hover:cursor-pointer hover:text-slate-700', passwordSecret && 'hidden')}/>
-                                            <FormControl>
-                                                <Input
-                                                {...field}
-                                                disabled={isPending}
-                                                type={clsx({'password': passwordSecret})}
-                                                placeholder="••••••••"
-                                                />
-                                            </FormControl>
-                                            <FormMessage/>
-                                        </FormItem>
-                                    )}
-                                />
-                                
+                                />                                
                             </div>
-                            <Button type="submit" className="w-full bg-sky-600 hover:bg-sky-700">Log in</Button>
+                            <FormError message={error}/>
+                            <FormSuccess message={success}/>
+                            <Button type="submit" className="w-full bg-sky-600 hover:bg-sky-700">Create account</Button>
                         </form>
                     </Form>
                 
