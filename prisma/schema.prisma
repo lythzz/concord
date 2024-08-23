@@ -47,10 +47,10 @@ model Account {
 }
 
 model VerificationToken {
-  token      String   @unique
+  token      String   @unique @id
   userId     String   @unique @map("user_id")
   expiration DateTime
   type       String
 
-  User       User     @relation(fields: [userId], references: [id])
+  User       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

@@ -9,8 +9,7 @@ import { defaultLoginRedirect } from "@/routes";
 import { redirect } from "next/navigation";
 import { AuthError, User } from "next-auth";
 import { Resend } from "resend";
-import EmailTemplate from "@/components/EmailTemplate";
-import errorMap from "zod/locales/en.js";
+import { ValidateEmail, ResetPasswordEmail } from "@/emails/EmailTemplate";
 import { randomUUID } from "crypto";
 
 export const sendConfirmationEmail = async (user: User) => {
@@ -37,8 +36,8 @@ export const sendConfirmationEmail = async (user: User) => {
     const sendEmail = await resend.emails.send({
         from: 'Concord <noreply@concordchat.online>',
         to: [email as string],
-        subject: 'hello world',
-        react: EmailTemplate({ name, link}),
+        subject: 'Confirm your account at Concord',
+        react: ValidateEmail({ name, link}),
       });
       
     if(sendEmail.error){
@@ -46,12 +45,70 @@ export const sendConfirmationEmail = async (user: User) => {
     }  
 };
 
+export const sendResetPasswordEmail = async (email: string) => {
+    const user =  await findUserByEmail(email);
+    if(!user) return { error: 'This email is not linked to any Concord account'}
+
+    const apiKey = process.env.RESEND_API_KEY;
+    const resend = new Resend(apiKey);
+    const expiration = new Date(Date.now() + 1000 * 60 * 10);
+    const token = randomUUID();
+
+    try {
+        await db.verificationToken.create({
+            data: {
+                token,
+                userId: user.id,
+                expiration,
+                type: 'reset-password'
+            }
+        })
+
+        const sendEmail = await resend.emails.send({
+            from: 'Concord <noreply@concordchat.online>',
+            to: [email as string],
+            subject: 'Reset your password at Concord',
+            react: ResetPasswordEmail({name: user.name, link: `${process.env.CURRENT_URL}/resetPassword/${token}`}),
+          });
+          
+          
+        if(sendEmail.error){
+            return { error: 'Something went wrong' }
+        }
+        
+        return { success: 'Email sent'}
+    } catch (error) {
+        return { error: 'Something went wrong' }
+    }
+
+}
+
+export const resetPassword = async (token: string, password: string) => {
+   try {
+    const tokenData = await db.verificationToken.findUnique({ where: { token } });
+    const id = tokenData?.userId;
+    if(!tokenData) return { error: 'Invalid token' }
+
+    if(tokenData.expiration < new Date()) return { error: 'Token expired' }
+    const hashedPassword = await bcrypt.hash(password, 10);
+    await db.user.update({
+        where: { id },
+        data: {
+            password: hashedPassword
+        }
+    })
+   } catch (error) {
+        return { error: "Something went wrong" }
+   }
+}
+
 export const confirmAccount = async (token: string) => {
     try {
         const tokenData = await db.verificationToken.findUnique({ where: { token } });
         const id = tokenData?.userId;
 
-        if(!tokenData) return { error: 'token_fail'}
+        if(!tokenData) return { error: 'Invalid token'}
+        if(tokenData.type !== 'email-validation') return { error: 'Invalid token'}
         if(tokenData.expiration < new Date()) return { error: 'Token expired' }
         
         const updateUser = await db.user.update({
@@ -63,10 +120,10 @@ export const confirmAccount = async (token: string) => {
             }
         })
 
+        await db.verificationToken.delete({ where: { token } })
         return { success: 'Email successfully verified' }
 
     } catch(e) {
-        console.log(e)
         return { error: 'Something went wrong' };
     }
 }

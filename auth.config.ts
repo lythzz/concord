@@ -8,8 +8,12 @@ import { db } from "./lib/db";
 
 export default {
     providers: [
-        github,
-        google,
+        github({
+          allowDangerousEmailAccountLinking: true,
+        }),
+        google({
+          allowDangerousEmailAccountLinking: true,
+        }),
         Credentials({
           async authorize(credentials) {
             const validateFields = LoginSchema.safeParse(credentials);

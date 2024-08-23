@@ -50,7 +50,6 @@ export default function LoginForm(){
 
     return(   
             <Card className="relative">
-                <div className="h-1"><BarLoader loading={isPending} className="absolute rounded-t-sm top-0" width={400}/></div>
             <CardHeader>
                 <CardTitle>Login</CardTitle>
                 <CardDescription>
@@ -108,10 +107,10 @@ export default function LoginForm(){
                             </div>
                             <FormError message={error}/>
                             <FormSuccess message={success}/>
-                            {!!error && <div className="text-sm space-y-0 hover:underline">
-                                <Link href={'/reset-password'}>Forgot your password?</Link>
-                            </div>}
-                            <Button type="submit" className="w-full bg-sky-600 hover:bg-sky-700">Log in</Button>
+                            <div className="text-sm space-y-0 hover:underline">
+                                <Link href={'/auth/resetPassword'}>Forgot your password?</Link>
+                            </div>
+                            <Button type="submit" className="w-full bg-orange-500 hover:bg-orange-600">Log in</Button>
                         </form>
                     </Form>
                 

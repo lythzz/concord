@@ -34,7 +34,8 @@ export default function RegisterForm(){
         resolver: zodResolver(RegisterSchema),
         defaultValues: {
             email: '',
-            password: ''
+            password: '',
+            username: ''
         }
     })
 
@@ -49,13 +50,14 @@ export default function RegisterForm(){
     }
 
     const checkName = useDebouncedCallback((name: string) => {
+        form.clearErrors('username')
         findUserByName(name)
             .then((user) => {
                 if(user){
-                    setError('Name already in use!')
+                    form.setError('username',{ message: 'Username already in use!'})
                 }
             })
-    }, 400)
+    }, 200)
 
     return(   
             <Card className="relative">
@@ -103,7 +105,10 @@ export default function RegisterForm(){
                                             <FormControl>
                                                 <Input
                                                 {...field}
-                                                //onChange={(e)=>checkName(e.target.value)}
+                                                onChange={(e)=>{
+                                                    field.onChange(e);
+                                                    checkName(e.target.value);
+                                                }}
                                                 disabled={isPending}
                                                 type="text"
                                                 placeholder="Enter your username"
@@ -136,7 +141,7 @@ export default function RegisterForm(){
                             </div>
                             <FormError message={error}/>
                             <FormSuccess message={success}/>
-                            <Button type="submit" className="w-full bg-sky-600 hover:bg-sky-700">Create account</Button>
+                            <Button type="submit" className="w-full bg-orange-500 hover:bg-orange-600">Create account</Button>
                         </form>
                     </Form>
                 
