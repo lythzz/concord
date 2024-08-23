@@ -14,7 +14,7 @@ import { FaEye, FaEyeSlash } from "react-icons/fa"
 import BarLoader from "react-spinners/BarLoader"
 import { useDebounce, useDebouncedCallback } from "use-debounce"
 
-export const Page = ({params} : {params: {token: string}}) => {
+export default function Page({params} : {params: {token: string}}) {
     const token = params.token
     const [hideNewPassword, setHideNewPassword] = useState(true)
     const [hideConfirmPassword, setHideConfirmPassword] = useState(true)
@@ -46,6 +46,8 @@ export const Page = ({params} : {params: {token: string}}) => {
             form.setError('new-password', { message: 'Password must have at least 6 characters' })
         }
     }, 200)
+
+    
     return(
         <main className="w-screen bg-zinc-100 h-screen flex flex-col items-center">
             <img src="https://res.cloudinary.com/dnlclcfck/image/upload/v1724330735/cmoe5428z1jpen8enhnq.png" alt="Concord" className="h-20 my-6 mt-20"/>
@@ -80,7 +82,7 @@ export const Page = ({params} : {params: {token: string}}) => {
                                                 checkPassword()
                                             }}
                                             disabled={isPending}
-                                            type={clsx(hideNewPassword && 'password')}
+                                            type={hideNewPassword ? 'password' : 'text'}
                                             placeholder="••••••••"
                                             />
                                         </FormControl>
@@ -104,7 +106,7 @@ export const Page = ({params} : {params: {token: string}}) => {
                                                 checkPassword()
                                             }}
                                             disabled={isPending}
-                                            type={clsx(hideConfirmPassword && 'password')}
+                                            type={hideConfirmPassword ? 'password' : 'text'}
                                             placeholder="••••••••"
                                             />
                                         </FormControl>
@@ -123,5 +125,3 @@ export const Page = ({params} : {params: {token: string}}) => {
         </main>
     )
 }
-
-export default Page;

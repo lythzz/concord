@@ -11,7 +11,7 @@ import { startTransition, useRef, useState } from "react"
 import BarLoader from "react-spinners/BarLoader"
 import Image from "next/image";
 
-export const Page = () => {
+export default function Page() {
     const [isPending, setIsPending] = useState(false)
     const [error, setError] = useState('')
     const [success, setSuccess] = useState('')
@@ -21,18 +21,20 @@ export const Page = () => {
         setIsPending(true);
         setError('');
         setSuccess('');
-        startTransition(() => {
+        startTransition(async () => {
             if(emailRef.current){
-                sendResetPasswordEmail(emailRef.current.value)
-                .then(data => {
+                try {
+                    const data = await sendResetPasswordEmail(emailRef.current.value);
                     if(data?.error) setError(data.error)
                     if(data?.success) setSuccess(data.success);
-                })
+                } catch (err) {
+                    setError('An unexpected error occurred');
+                }
             }
-            setIsPending(false)
-        })
-        
+            setIsPending(false);
+        });
     }
+        
     return(
         <main className="w-screen bg-none h-screen flex flex-col items-center">
             <Image src="/background.png" width={1920} height={1080} className="absolute -z-10 w-screen h-screen object-cover" alt="background"/>
@@ -64,4 +66,3 @@ export const Page = () => {
     )
 }
 
-export default Page;
