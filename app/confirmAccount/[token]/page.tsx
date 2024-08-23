@@ -20,7 +20,7 @@ export default function Page({ params }: { params: { token: string } }){
 
     return(
         <div className="w-full h-full flex flex-col justify-center items-center">
-            <h1>You're logged in</h1>
+            <h1>You&apos;re logged in</h1>
             {!!error && <h1>{error}</h1>}
             {!!success && <h1>{success}</h1>}
         </div>
