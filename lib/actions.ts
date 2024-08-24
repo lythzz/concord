@@ -2,7 +2,7 @@
 
 import { signIn, signOut } from "@/auth"
 import { LoginSchema, RegisterSchema } from "@/schemas";
-import bcrypt from 'bcryptjs'
+import bcrypt from 'bcrypt'
 import * as z from "zod";
 import { db } from "./db";
 import { defaultLoginRedirect } from "@/routes";
