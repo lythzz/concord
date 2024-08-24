@@ -15,7 +15,7 @@ import { randomUUID } from "crypto";
 export const sendConfirmationEmail = async (user: User) => {
   const apiKey = process.env.RESEND_API_KEY;
   const resend = new Resend(apiKey);
-  const expiration = new Date(Date.now() + 1000 * 60 * 10);
+  const expiration = new Date(Date.now() + 1000 * 60 * 30);
   const token = randomUUID();
   const { id, name, email} = user;
   const link = `${process.env.CURRENT_URL}/confirmAccount/${token}`
@@ -41,6 +41,8 @@ export const sendConfirmationEmail = async (user: User) => {
       });
       
     if(sendEmail.error){
+        console.log(sendEmail)
+        await db.verificationToken.delete({ where: { userId: id } });
         return { error: 'email_not_sent'}
     }  
 };
@@ -51,7 +53,7 @@ export const sendResetPasswordEmail = async (email: string) => {
 
     const apiKey = process.env.RESEND_API_KEY;
     const resend = new Resend(apiKey);
-    const expiration = new Date(Date.now() + 1000 * 60 * 10);
+    const expiration = new Date(Date.now() + 1000 * 60 * 30);
     const token = randomUUID();
 
     try {
@@ -73,11 +75,14 @@ export const sendResetPasswordEmail = async (email: string) => {
           
           
         if(sendEmail.error){
-            return { error: 'Something went wrong' }
+            await db.verificationToken.delete({ where: { userId: user.id } });
+            console.log(sendEmail)
+            return { error: 'Something went wrong' };
         }
         
         return { success: 'Email sent'}
     } catch (error) {
+        console.log(error)
         return { error: 'Something went wrong' }
     }
 
@@ -220,11 +225,14 @@ export const register = async (values: z.infer<typeof RegisterSchema>) => {
                 password: hashedPassword
             }
         })
-        console.log(user)
-        await sendConfirmationEmail(user);
+        const sendEmail = await sendConfirmationEmail(user);
+        if(sendEmail?.error){
+            await db.user.delete({ where: { name: username } })
+            return { error: 'Something went wrong, please try again later' }
+        }
         return { success: 'Check your email' }
     } catch (e){
-        return { error: 'Something went wrong!' }
+        return { error: 'Something went wrong, please try again later' }
     }
    
 }
