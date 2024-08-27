@@ -1,9 +1,9 @@
 import { db } from "@/lib/db";
-import { NextApiRequest, NextApiResponse } from "next"
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export const POST = async(req: NextApiRequest, res: NextApiResponse) => {
-    if (req.headers.authorization && req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) {
+export const POST = async(req: NextRequest) => {
+    const authorizationHeader = req.headers.get("Authorization");
+    if (authorizationHeader && authorizationHeader !== `Bearer ${process.env.CRON_SECRET}`) {
         return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
