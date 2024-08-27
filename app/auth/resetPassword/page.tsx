@@ -36,33 +36,28 @@ export default function Page() {
     }
         
     return(
-        <main className="w-screen bg-none h-screen flex flex-col items-center">
-            <Image src="/background.png" width={1920} height={1080} className="absolute -z-10 w-screen h-screen object-cover" alt="background"/>
-            <Link href="/">
-                <div className="select-none mt-10 sm:mt-0 sm:fixed sm:top-4 items-center space-x-4 sm:left-4 flex cursor-pointer">
-                    <img src="https://res.cloudinary.com/dnlclcfck/image/upload/v1724330735/cmoe5428z1jpen8enhnq.png" alt="Concord" className="h-16"/>
-                    <h1 className="text-white font-bold text-2xl">Concord</h1>
-                    </div>
-            </Link>
+       
             <Card className="mt-16 sm:mt-36 mx-10">
             <div className="h-1"><BarLoader loading={isPending} className="absolute rounded-t-sm top-0" width={'100%'}/></div>
                 <CardHeader>
                     <CardTitle>Reset password</CardTitle>
                     <CardDescription>
-                        Enter your email and we will send you a link to reset your password. The link expires in 10min.
+                        Enter your email and we will send you a link to reset your password. The link expires in 30min.
                     </CardDescription>
                 </CardHeader>
-                <CardContent>
-                        <Label htmlFor="email">Email</Label>
-                        <Input disabled={isPending} ref={emailRef} className="mt-1 mb-2" type="email" name="email" placeholder="example@domain.com" />
-                        <Link className="text-sm hover:underline" href='/auth'>{'<- Back to login page'}</Link>
+                <CardContent className="space-y-4">
+                        <div>
+                            <Label htmlFor="email">Email</Label>
+                            <Input disabled={isPending} ref={emailRef} className="mt-1 mb-2" type="email" name="email" placeholder="example@domain.com" />
+                        </div>
                         <FormError message={error}/>
                         <FormSuccess message={success}/>
+                        <div><Link className="text-sm hover:underline" href='/auth'>{'<- Back to login page'}</Link></div>
                         <Button className="w-full mt-4 bg-orange-500 hover:bg-orange-600" onClick={handleSubmit}>Reset password</Button>
                 </CardContent>
                 
             </Card>
-        </main>
+        
     )
 }
 
