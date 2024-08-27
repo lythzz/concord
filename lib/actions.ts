@@ -11,6 +11,7 @@ import { AuthError, User } from "next-auth";
 import { Resend } from "resend";
 import { ValidateEmail, ResetPasswordEmail } from "@/emails/EmailTemplate";
 import { randomUUID } from "crypto";
+import { profilePictureUrls } from "./utils";
 
 export const sendConfirmationEmail = async (user: User) => {
   const apiKey = process.env.RESEND_API_KEY;
@@ -18,7 +19,7 @@ export const sendConfirmationEmail = async (user: User) => {
   const expiration = new Date(Date.now() + 1000 * 60 * 30);
   const token = randomUUID();
   const { id, name, email} = user;
-  const link = `${process.env.CURRENT_URL}/confirmAccount/${token}`
+  const link = `${process.env.CURRENT_URL}/auth/confirmAccount/${token}`;
 
   try {
     const newtoken = await db.verificationToken.create({
@@ -55,7 +56,7 @@ export const sendResetPasswordEmail = async (email: string) => {
     const resend = new Resend(apiKey);
     const expiration = new Date(Date.now() + 1000 * 60 * 30);
     const token = randomUUID();
-
+    console.log(token)
     try {
         await db.verificationToken.create({
             data: {
@@ -77,13 +78,13 @@ export const sendResetPasswordEmail = async (email: string) => {
         if(sendEmail.error){
             await db.verificationToken.delete({ where: { userId: user.id } });
             console.log(sendEmail)
-            return { error: 'Something went wrong' };
+            return { error: 'Something went wrong, please try again later' };
         }
         
-        return { success: 'Email sent'}
+        return { success: 'A password reset link has been sent to your email' }
     } catch (error) {
         console.log(error)
-        return { error: 'Something went wrong' }
+        return { error: 'Something went wrong, please try again later' }
     }
 
 }
@@ -94,7 +95,7 @@ export const resetPassword = async (token: string, password: string) => {
     const id = tokenData?.userId;
     if(!tokenData) return { error: 'Invalid token' }
 
-    if(tokenData.expiration < new Date()) return { error: 'Token expired' }
+    if(tokenData.expiration && tokenData.expiration < new Date()) return { error: 'Token expired' }
     const hashedPassword = await bcrypt.hash(password, 10);
     await db.user.update({
         where: { id },
@@ -102,6 +103,7 @@ export const resetPassword = async (token: string, password: string) => {
             password: hashedPassword
         }
     })
+    return { success: 'Password successfully changed' }
    } catch (error) {
         return { error: "Something went wrong" }
    }
@@ -110,11 +112,13 @@ export const resetPassword = async (token: string, password: string) => {
 export const confirmAccount = async (token: string) => {
     try {
         const tokenData = await db.verificationToken.findUnique({ where: { token } });
-        const id = tokenData?.userId;
+        if(!tokenData) return { error: 'Invalid token' }
 
-        if(!tokenData) return { error: 'Invalid token'}
+        const id = tokenData?.userId;
+        const user = await findUserById(id);
+
+        if(user?.emailVerified) return { error: 'This account already has been verified' }
         if(tokenData.type !== 'email-validation') return { error: 'Invalid token'}
-        if(tokenData.expiration < new Date()) return { error: 'Token expired' }
         
         const updateUser = await db.user.update({
             where : {
@@ -124,16 +128,15 @@ export const confirmAccount = async (token: string) => {
                 emailVerified: new Date()
             }
         })
-
-        await db.verificationToken.delete({ where: { token } })
-        return { success: 'Email successfully verified' }
+        await db.verificationToken.delete({ where: { token } });
+        return { success: 'Your account has been successfully verified' }
 
     } catch(e) {
         return { error: 'Something went wrong' };
     }
 }
 
-export async function findUserByEmail(email: string) {
+export const findUserByEmail = async (email: string) => {
     try {
         const user = db.user.findUnique({ where: { email } });
         return user;
@@ -163,7 +166,7 @@ export const findUserByName= async (name: string) => {
     }
 }
 
-export async function signInWithProvider(provider: 'google' | 'github'){
+export const signInWithProvider = async (provider: 'google' | 'github') => {
     await signIn(provider);
 }
 
@@ -217,12 +220,15 @@ export const register = async (values: z.infer<typeof RegisterSchema>) => {
     const existingUser = await findUserByEmail(email);
     if(existingUser) return { error: 'This email is already in use!' }
 
+    const randomIndex = Math.floor(Math.random() * 8)
+
     try{
         const user = await db.user.create({
             data: {
                 email,
                 name: username,
-                password: hashedPassword
+                password: hashedPassword,
+                image: profilePictureUrls[randomIndex]
             }
         })
         const sendEmail = await sendConfirmationEmail(user);
