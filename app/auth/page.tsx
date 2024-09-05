@@ -7,8 +7,6 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs"
-import Link from "next/link"
-import Image from "next/image";
 
 export default function Page(){
     return(

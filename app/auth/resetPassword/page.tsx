@@ -2,14 +2,13 @@
 
 import { FormError, FormSuccess } from "@/components/auth/form-warnings"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { sendResetPasswordEmail } from "@/lib/actions"
+import { sendResetPasswordEmail } from "@/lib/auth-actions"
 import Link from "next/link"
 import { startTransition, useRef, useState } from "react"
 import BarLoader from "react-spinners/BarLoader"
-import Image from "next/image";
 
 export default function Page() {
     const [isPending, setIsPending] = useState(false)

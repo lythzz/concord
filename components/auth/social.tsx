@@ -1,6 +1,6 @@
 import { Button } from "../ui/button"
 import { FaGoogle, FaGithub } from "react-icons/fa"
-import { signInWithProvider } from "@/lib/actions"
+import { signInWithProvider } from "@/lib/auth-actions"
 
 export default function Social(){
     return(

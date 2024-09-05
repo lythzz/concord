@@ -20,7 +20,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "../ui/form"
 import { useState, useTransition } from "react"
 import clsx from "clsx"
-import { findUserByName, login, register } from "@/lib/actions"
+import { findUserByName, login, register } from "@/lib/auth-actions"
 import { FormError, FormSuccess } from "./form-warnings"
 import { useDebouncedCallback } from 'use-debounce'
 

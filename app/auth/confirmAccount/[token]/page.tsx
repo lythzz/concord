@@ -1,13 +1,11 @@
 'use client'
 
 import { FormError, FormSuccess } from "@/components/auth/form-warnings"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { confirmAccount } from "@/lib/actions"
+import { confirmAccount } from "@/lib/auth-actions"
 import clsx from "clsx"
 import Link from "next/link"
-import { redirect, useSearchParams } from "next/navigation"
-import { startTransition, useEffect, useState } from "react"
+import {  useEffect, useState } from "react"
 import  PulseLoader from 'react-spinners/PulseLoader'
 
 export default function Page({ params }: { params: { token: string } }){
