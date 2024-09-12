@@ -20,7 +20,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "../ui/form"
 import { useState, useTransition } from "react"
 import clsx from "clsx"
-import { login } from "@/lib/actions"
+import { login } from "@/lib/auth-actions"
 import { FormError, FormSuccess } from "./form-warnings"
 import Link from "next/link"
 
@@ -42,8 +42,8 @@ export default function LoginForm(){
         startTransition(() => {
             login(values)
                 .then((data) => {
-                    setError(data.error)
-                    setSuccess(data.success)
+                    setError(data?.error)
+                    setSuccess(data?.success)
                 })
         })
     }
