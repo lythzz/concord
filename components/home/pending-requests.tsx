@@ -9,8 +9,7 @@ import { useWebSocket } from "../ws-context-provider";
 
 export default function PendingRequestPage({requests, setRequests}: any) {
     const socket = useWebSocket();
-    if(!socket) return null;
-    const { ws , messages } = socket;
+    const { ws , messages } = socket!;
     const { sentRequests, receivedRequests } = requests;
     const { setSentRequests, setReceivedRequests } = setRequests;
     const { toast } = useToast();

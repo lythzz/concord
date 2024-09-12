@@ -8,8 +8,8 @@ export default function Page({params}: {params: {id: string}}) {
     const id = params.id
     const socket = useWebSocket();
     
-    if(!socket) return null;
-    const { ws, messages } = socket;
+   
+    const { ws, messages } = socket!;
 
     useEffect(() => {
         const lastMessage = messages[messages.length - 1];

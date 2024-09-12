@@ -13,8 +13,7 @@ import { useEffect, useState } from "react";
 export default function Page() {
     const [currentPage, setPage] = useState('online')
     const socket = useWebSocket();
-    if(!socket) return null;
-    const { ws, messages } = socket;
+    
 
     const [onlineFriends, setOnlineFriends] = useState<any[]>();
 
@@ -23,6 +22,7 @@ export default function Page() {
     const [receivedRequests, setReceivedRequests] = useState<object[]>([])
     const requests = { sentRequests, receivedRequests};
     const setRequests = { setSentRequests, setReceivedRequests};
+    const { ws, messages } = socket!;
 
     useEffect(() => {
         const data = localStorage.getItem('onlineUsers');
@@ -37,6 +37,7 @@ export default function Page() {
                 if(data.received) setReceivedRequests(data.received)
             })
     }, [messages]);
+
     
     return(
         <div className="w-full h-full flex flex-col">

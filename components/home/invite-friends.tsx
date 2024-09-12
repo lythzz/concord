@@ -22,8 +22,7 @@ export default function AddFriendsPage() {
     const { toast } = useToast();
 
     const socket = useWebSocket();
-    if(!socket) return null;
-    const { ws, messages } = socket;
+    const { ws, messages } = socket!;
 
     const handleFriendSearch = useDebouncedCallback((name: string) => {
         setResults([])
