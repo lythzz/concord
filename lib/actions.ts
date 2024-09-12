@@ -1,244 +1,162 @@
-"use server"
+'use server'
 
-import { signIn, signOut } from "@/auth"
-import { LoginSchema, RegisterSchema } from "@/schemas";
-import bcrypt from 'bcrypt'
-import * as z from "zod";
-import { db } from "./db";
-import { defaultLoginRedirect } from "@/routes";
-import { redirect } from "next/navigation";
-import { AuthError, User } from "next-auth";
+import { auth } from "@/auth"
+import { db } from "./db"
 import { Resend } from "resend";
-import { ValidateEmail, ResetPasswordEmail } from "@/emails/EmailTemplate";
-import { randomUUID } from "crypto";
-import { profilePictureUrls } from "./utils";
 
-export const sendConfirmationEmail = async (user: User) => {
-  const apiKey = process.env.RESEND_API_KEY;
-  const resend = new Resend(apiKey);
-  const expiration = new Date(Date.now() + 1000 * 60 * 30);
-  const token = randomUUID();
-  const { id, name, email} = user;
-  const link = `${process.env.CURRENT_URL}/auth/confirmAccount/${token}`;
-
-  try {
-    const newtoken = await db.verificationToken.create({
-       data: {
-        token,
-        expiration,
-        userId: id as string,
-        type: 'email-validation'
-       }
-    },)
-    } catch (e) {
-        return { error: 'token_fail'}
-    }
-
-    const sendEmail = await resend.emails.send({
-        from: 'Concord <noreply@concordchat.online>',
-        to: [email as string],
-        subject: 'Confirm your account at Concord',
-        react: ValidateEmail({ name, link}),
-      });
-      
-    if(sendEmail.error){
-        console.log(sendEmail)
-        await db.verificationToken.delete({ where: { userId: id } });
-        return { error: 'email_not_sent'}
-    }  
-};
-
-export const sendResetPasswordEmail = async (email: string) => {
-    const user =  await findUserByEmail(email);
-    if(!user) return { error: 'This email is not linked to any Concord account'}
-
-    const apiKey = process.env.RESEND_API_KEY;
-    const resend = new Resend(apiKey);
-    const expiration = new Date(Date.now() + 1000 * 60 * 30);
-    const token = randomUUID();
-    console.log(token)
-    try {
-        await db.verificationToken.create({
-            data: {
-                token,
-                userId: user.id,
-                expiration,
-                type: 'reset-password'
-            }
-        })
-
-        const sendEmail = await resend.emails.send({
-            from: 'Concord <noreply@concordchat.online>',
-            to: [email as string],
-            subject: 'Reset your password at Concord',
-            react: ResetPasswordEmail({name: user.name, link: `${process.env.CURRENT_URL}/resetPassword/${token}`}),
-          });
-          
-          
-        if(sendEmail.error){
-            await db.verificationToken.delete({ where: { userId: user.id } });
-            console.log(sendEmail)
-            return { error: 'Something went wrong, please try again later' };
-        }
-        
-        return { success: 'A password reset link has been sent to your email' }
-    } catch (error) {
-        console.log(error)
-        return { error: 'Something went wrong, please try again later' }
-    }
-
-}
-
-export const resetPassword = async (token: string, password: string) => {
-   try {
-    const tokenData = await db.verificationToken.findUnique({ where: { token } });
-    const id = tokenData?.userId;
-    if(!tokenData) return { error: 'Invalid token' }
-
-    if(tokenData.expiration && tokenData.expiration < new Date()) return { error: 'Token expired' }
-    const hashedPassword = await bcrypt.hash(password, 10);
-    await db.user.update({
-        where: { id },
-        data: {
-            password: hashedPassword
+export const searchFriends = async (name:string) => {
+    const session = await auth();
+    const id = session?.user?.id
+    const users = await db.user.findMany({
+        where: {
+            name: {
+                contains: name
+            },
+            
+        }, select: {
+            id: true,
+            name: true,
+            image: true
         }
     })
-    return { success: 'Password successfully changed' }
-   } catch (error) {
-        return { error: "Something went wrong" }
+    const userFriendships = await db.friendship.findMany({
+        where: {
+            OR: [
+                {userFirstId: id},
+                {userSecondId: id}
+            ]
+        }
+    })
+    let filteredUsers = users.filter((user) => {
+        const isFriend = userFriendships.some((friendship) => {
+            return friendship.userFirstId === user.id || friendship.userSecondId === user.id;
+        });
+        return !isFriend; // Retorna usuários que não estão em nenhuma amizade
+    });
+    filteredUsers = filteredUsers.filter((user) => user.id !== id)
+    return filteredUsers
+}
+
+export const addFriend = async (friendId: string) => {
+    const session = await auth();
+    const userId = session?.user?.id
+    if(!userId) return { error: true } 
+   try {
+        await db.friendship.create({
+            data: {
+                userFirstId: userId,
+                userSecondId: friendId,
+            }
+        }
+        )
+        return { success: true }
+   } catch (e) {
+        return { error: true}
    }
 }
 
-export const confirmAccount = async (token: string) => {
+export const getPendingRequests = async () => {
+    const session = await auth();
+    const id = session?.user?.id
     try {
-        const tokenData = await db.verificationToken.findUnique({ where: { token } });
-        if(!tokenData) return { error: 'Invalid token' }
+        const sent = await db.friendship.findMany({
+            where: {
+                userFirstId: id,
+                accepted: false
+            },
+             select:{
+                id: true,
+                userSecond: true
+            }
+        })
 
-        const id = tokenData?.userId;
-        const user = await findUserById(id);
+        const received = await db.friendship.findMany({
+            where: {
+                userSecondId: id,
+                accepted: false
+            },
+            select:{
+                id: true,
+                userFirst: true
+            }
+        })
+        return { sent, received }
 
-        if(user?.emailVerified) return { error: 'This account already has been verified' }
-        if(tokenData.type !== 'email-validation') return { error: 'Invalid token'}
-        
-        const updateUser = await db.user.update({
-            where : {
-                id
+    } catch (error) {
+        return { error }
+    }
+}
+
+export const denyFriendRequest = async (friendshipId: string) => {
+    try {
+        await db.friendship.delete({
+            where: {
+                id: friendshipId
+            }
+        })
+        return { success: true }
+    } catch (error) {
+        return { error }
+    }
+}
+
+export const acceptFriendRequest = async (friendshipId: string) => {
+    try {
+        await db.friendship.update({
+            where: {
+                id: friendshipId
             },
             data: {
-                emailVerified: new Date()
+                accepted: true,
+                chat: {
+                    create: {}
+                }
             }
         })
-        await db.verificationToken.delete({ where: { token } });
-        return { success: 'Your account has been successfully verified' }
-
-    } catch(e) {
-        return { error: 'Something went wrong' };
-    }
-}
-
-export const findUserByEmail = async (email: string) => {
-    try {
-        const user = db.user.findUnique({ where: { email } });
-        return user;
-
-    } catch {
-        return null;
-    }
-}
-
-export const findUserById = async (id: string) => {
-    try {
-        const user = db.user.findUnique({ where: { id } });
-        return user;
-
-    } catch {
-        return null;
-    }
-}
-
-export const findUserByName= async (name: string) => {
-    try {
-        const user = db.user.findUnique({ where: { name } });
-        return user;
-
-    } catch {
-        return null;
-    }
-}
-
-export const signInWithProvider = async (provider: 'google' | 'github') => {
-    await signIn(provider);
-}
-
-export const login = async (values: z.infer<typeof LoginSchema>) => {
-    const validateFields =  LoginSchema.safeParse(values);
-
-    if(!validateFields.success){
-        return { error: 'Invalid fields!' }
-    }
-    
-    const { email, password } = validateFields.data;
-
-    try {
-        await signIn('credentials', {
-            email,
-            password,
-            redirect: true,
-            redirectTo: defaultLoginRedirect
-        });
-        return { success: 'Logged in!' }
+        return { success: true }
     } catch (error) {
-        if (error instanceof AuthError) {
-          switch (error.type) {
-            case 'CredentialsSignin':
-              return { error: 'Invalid credentials.'};
-            default:
-              return { error: 'Something went wrong' }
-          }
-        }
-
-        if(error instanceof Error && error.message=='email_unverified'){
-            return { error: 'Please verify your email'}
-        }
-        throw error;
-      }   
+        return { error }
+    }
 }
 
-export const logout = async () =>{
-    await signOut({redirect: true, redirectTo: '/auth'});
-}
-export const register = async (values: z.infer<typeof RegisterSchema>) => {
-    const validateFields =  RegisterSchema.safeParse(values);
-
-    if(!validateFields.success){
-        return { error: 'Invalid fields!' }
+export const sendBugReport = async (title: string, description: string) => {
+    const session = await auth();
+    const email = session?.user?.email
+    const apiKey = process.env.RESEND_API_KEY;
+    const resend = new Resend(apiKey);
+  
+    const sendEmail = await resend.emails.send({
+        from: 'Concord <noreply@concordchat.online>',
+        to: 'lucashartmann1337@gmail.com',
+        subject: `Concord bug report: ${title}`,
+        text: `Sent from: ${email}\n\n${description}`,
+    });
+    
+    if(sendEmail.error){
+        return { error: 'email_not_sent'}
     }
 
-    const { username, email, password } = validateFields.data
-    const hashedPassword = await bcrypt.hash(password, 10)
+    return { success: 'bug_reported'}
+  };
 
-    const existingUser = await findUserByEmail(email);
-    if(existingUser) return { error: 'This email is already in use!' }
-
-    const randomIndex = Math.floor(Math.random() * 8)
-
-    try{
-        const user = await db.user.create({
-            data: {
-                email,
-                name: username,
-                password: hashedPassword,
-                image: profilePictureUrls[randomIndex]
-            }
-        })
-        const sendEmail = await sendConfirmationEmail(user);
-        if(sendEmail?.error){
-            await db.user.delete({ where: { name: username } })
-            return { error: 'Something went wrong, please try again later' }
+export const filterOnlineUsers = async (userId: string, onlineUsers: string[]) => {
+    const friends = await db.friendship.findMany({
+        where: {
+          accepted: true,
+          OR: [
+            { userFirstId: userId },
+            { userSecondId: userId }
+          ]
+        },
+        select: {
+          userFirst: true,
+          userSecond: true
         }
-        return { success: 'Check your email' }
-    } catch (e){
-        return { error: 'Something went wrong, please try again later' }
-    }
-   
+      });
+      
+      const friendsList = friends.map(friend => 
+        friend.userFirst.id === userId ? friend.userSecond : friend.userFirst
+      );
+    const onlineFriends = friendsList.filter((friend) => onlineUsers.includes(friend.id))
+    
 }

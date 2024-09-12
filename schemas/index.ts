@@ -1,4 +1,4 @@
-import { findUserByName } from '@/lib/actions'
+import { findUserByName } from '@/lib/auth-actions'
 import * as z from 'zod'
 
 export const LoginSchema = z.object({
