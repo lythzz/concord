@@ -1,8 +1,7 @@
 'use client'
 
-
-import { getUserIdByEmail } from '@/lib/auth-actions';
-import { getSession, useSession } from 'next-auth/react';
+import { filterOnlineUsers } from '@/lib/actions';
+import { useSession } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
@@ -24,7 +23,6 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode}) =>
   const [userId, setUserId] = useState<string | null | undefined>(undefined);
   const session = useSession();
   useEffect(() => {
-    console.log(session)
     setUserId(session.data?.user?.id)  
   }, [])
   
@@ -40,11 +38,11 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode}) =>
           userId: userId
         }
       }))
-      if(p.includes('/home/chat/')){
+      if(p.includes('/home/c/')){
         socket.send(JSON.stringify({
           type: "JOIN_PRIVATE_CHAT",
           data: {
-            chatId: p.split('/home/chat/')[1],
+            chatId: p.split('/home/c/')[1],
             userId: userId
           }
         }))
@@ -54,6 +52,35 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode}) =>
     socket.onmessage = (event) => {
       const newMessage = JSON.parse(event.data)
       console.log(newMessage)
+
+      if(newMessage.type == 'ONLINE_USERS_LIST'){
+         localStorage.setItem('onlineUsers', JSON.stringify(newMessage.data))
+         
+      }
+
+      if(newMessage.type == 'FRIEND_JOINED'){
+        const currentOnlineUsers = localStorage.getItem('onlineUsers');
+
+        if(currentOnlineUsers){
+          const parsedOnlineUsers = JSON.parse(currentOnlineUsers)
+          if(!parsedOnlineUsers.find((user: any) => user.id == newMessage.data.id)){
+            parsedOnlineUsers.push(newMessage.data)
+            localStorage.setItem('onlineUsers', JSON.stringify(parsedOnlineUsers))	
+          }
+        }
+      }
+
+      if(newMessage.type == 'FRIEND_LEFT'){
+        const currentOnlineUsers = localStorage.getItem('onlineUsers');
+        if(currentOnlineUsers){
+          const parsedOnlineUsers = JSON.parse(currentOnlineUsers)
+          const index = parsedOnlineUsers.findIndex((user: any) => user.id == newMessage.data.id)
+          parsedOnlineUsers.splice(index, 1)
+          localStorage.setItem('onlineUsers', JSON.stringify(parsedOnlineUsers))	
+          
+        }
+      }
+
       setMessages((prevMessages) => [...prevMessages, newMessage]);
     };
 
