@@ -1,4 +1,5 @@
 
+'use client'
 import clsx from "clsx";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card"
 import { ScrollArea } from "../ui/scroll-area";
@@ -6,19 +7,22 @@ import { UserRequestReceived, UserRequestSent } from "./user-item";
 import { acceptFriendRequest, addFriend, denyFriendRequest, searchFriends } from "@/lib/actions"
 import { useToast } from "@/hooks/use-toast";
 import { useWebSocket } from "../ws-context-provider";
+import { useSession } from "next-auth/react";
 
 export default function PendingRequestPage({requests, setRequests}: any) {
     const socket = useWebSocket();
     const { ws , messages } = socket!;
     const { sentRequests, receivedRequests } = requests;
     const { setSentRequests, setReceivedRequests } = setRequests;
+    const session = useSession();
     const { toast } = useToast();
 
-    const handleAccept = (id: string, userId: string) => {
+    const handleAccept = (id: string, friendId: string) => { 
+        const userId = session?.data?.user?.id;
         acceptFriendRequest(id)
             .then((res) => {
                 if(res.success){
-                    ws?.send(JSON.stringify({type: 'UPDATED_REQUEST_STATE', data: {friendId: userId}}))
+                    ws?.send(JSON.stringify({type: 'UPDATED_FRIENDSHIP_STATE', data: {friendId: friendId, userId: userId}}))
                     setReceivedRequests(receivedRequests.filter((invite: any) => invite.id !== id))
                 }
                 if(res.error){
@@ -35,7 +39,7 @@ export default function PendingRequestPage({requests, setRequests}: any) {
         denyFriendRequest(id)
             .then((res) => {
                 if(res.success){
-                    ws?.send(JSON.stringify({type: 'UPDATED_REQUEST_STATE', data: {friendId: userId}}))
+                    ws?.send(JSON.stringify({type: 'UPDATED_FRIENDSHIP_STATE', data: {friendId: userId}}))
                     setReceivedRequests(receivedRequests.filter((invite: any) => invite.id !== id))
                 }
                 if(res.error){
@@ -52,7 +56,7 @@ export default function PendingRequestPage({requests, setRequests}: any) {
         denyFriendRequest(id)
             .then((res) => {
                 if(res.success){
-                    ws?.send(JSON.stringify({type: 'UPDATED_REQUEST_STATE', data: {friendId: userId}}))
+                    ws?.send(JSON.stringify({type: 'UPDATED_FRIENDSHIP_STATE', data: {friendId: userId}}))
                     setSentRequests(sentRequests.filter((invite: any) => invite.id !== id))
                 }
                 if(res.error){

@@ -27,8 +27,6 @@ model User {
   tokens            VerificationToken[]
   friendsFirst      Friendship[]        @relation("User1Friendships")
   friendsSecond     Friendship[]        @relation("User2Friendships")
-  messages          Message[]
-  groupChats        GroupChat[]
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
 }
@@ -66,36 +64,9 @@ model Friendship {
   userFirstId       String              @map("user_first_id")
   userSecondId      String              @map("user_second_id")
   accepted          Boolean             @default(false)
-  chat              PrivateChat?
+
   createdAt         DateTime            @default(now())
 
   userFirst         User                @relation("User1Friendships", fields: [userFirstId], references: [id])
   userSecond        User                @relation("User2Friendships", fields: [userSecondId], references: [id])
-}
-
-model PrivateChat {
-  id                String              @unique @id @default(cuid())
-  friendshipId      String              @unique         
-  messages          Message[]
-
-  friendship        Friendship          @relation(fields: [friendshipId], references: [id])
-}
-
-model GroupChat {
-  id                String              @unique @id @default(cuid())
-  membersId         String[]      
-  messages          Message[]
-
-  members           User[]             
-}
-
-model Message {
-  id                String              @unique @id @default(cuid())
-  senderId          String
-  privateChatId     String?
-  groupChatId       String?
-  privateChat       PrivateChat?        @relation(fields: [privateChatId], references: [id])
-  groupChat         GroupChat?          @relation(fields: [groupChatId], references: [id])
-
-  sender            User                @relation(fields: [senderId], references: [id])            
 }

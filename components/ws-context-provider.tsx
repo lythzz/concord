@@ -1,6 +1,5 @@
 'use client'
 
-import { filterOnlineUsers } from '@/lib/actions';
 import { useSession } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
 import React, { createContext, useContext, useEffect, useState } from 'react';
@@ -38,15 +37,7 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode}) =>
           userId: userId
         }
       }))
-      if(p.includes('/home/c/')){
-        socket.send(JSON.stringify({
-          type: "JOIN_PRIVATE_CHAT",
-          data: {
-            chatId: p.split('/home/c/')[1],
-            userId: userId
-          }
-        }))
-      }
+    
     };
 
     socket.onmessage = (event) => {
@@ -54,17 +45,16 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode}) =>
       console.log(newMessage)
 
       if(newMessage.type == 'ONLINE_USERS_LIST'){
-         localStorage.setItem('onlineUsers', JSON.stringify(newMessage.data))
-         
+         localStorage.removeItem('onlineUsers');
+         localStorage.setItem('onlineUsers', JSON.stringify(newMessage.data))         
       }
 
       if(newMessage.type == 'FRIEND_JOINED'){
         const currentOnlineUsers = localStorage.getItem('onlineUsers');
-
         if(currentOnlineUsers){
-          const parsedOnlineUsers = JSON.parse(currentOnlineUsers)
-          if(!parsedOnlineUsers.find((user: any) => user.id == newMessage.data.id)){
-            parsedOnlineUsers.push(newMessage.data)
+          const parsedOnlineUsers = JSON.parse(currentOnlineUsers);
+          if(!parsedOnlineUsers.includes(newMessage.data.id)){
+            parsedOnlineUsers.push(newMessage.data.id)
             localStorage.setItem('onlineUsers', JSON.stringify(parsedOnlineUsers))	
           }
         }
@@ -74,10 +64,9 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode}) =>
         const currentOnlineUsers = localStorage.getItem('onlineUsers');
         if(currentOnlineUsers){
           const parsedOnlineUsers = JSON.parse(currentOnlineUsers)
-          const index = parsedOnlineUsers.findIndex((user: any) => user.id == newMessage.data.id)
-          parsedOnlineUsers.splice(index, 1)
-          localStorage.setItem('onlineUsers', JSON.stringify(parsedOnlineUsers))	
-          
+          const index = parsedOnlineUsers.findIndex(newMessage.data.id)
+          if(index) parsedOnlineUsers.splice(index, 1)
+          localStorage.setItem('onlineUsers', JSON.stringify(parsedOnlineUsers))    
         }
       }
 
@@ -89,8 +78,6 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode}) =>
     };
 
     socket.onerror = (error) => {
-      console.log(error)
-
       
     };
       return () => {

@@ -41,7 +41,7 @@ export default function AddFriendsPage() {
         addFriend(friendId)
                 .then((data) => {
                     if(data.success){
-                        ws?.send(JSON.stringify({type: 'UPDATED_REQUEST_STATE', data: {friendId: friendId}}))
+                        ws?.send(JSON.stringify({type: 'UPDATED_FRIENDSHIP_STATE', data: {friendId: friendId}}))
                         setResults(results.filter((result: any) => result.id !== friendId))
                     }
                     if(data.error){

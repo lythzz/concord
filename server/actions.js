@@ -24,34 +24,7 @@ const handleUserJoin = async (userId, socket) => {
     }
 
     if(!userFriendsCache.has(userId)){
-
-    const query = await prisma.friendship.findMany({
-        where: {
-          accepted: true,
-          OR: [
-            { userFirstId: userId },
-            { userSecondId: userId }
-          ]
-        },
-        select: {
-          userFirst: { select: {
-            id: true,
-            name: true,
-            image: true,
-          }},
-          userSecond: { select: {
-            id: true,
-            name: true,
-            image: true,
-          }}
-        }
-      });
-      
-      const friendsList = query.map(friend => 
-        friend.userFirst.id === userId ? friend.userSecond : friend.userFirst
-      );
-    
-        userFriendsCache.set(userId, friendsList)
+        await generateUserFriendsCache(userId)
     }
 
     sendOnlineFriends(userId, socket)
@@ -60,16 +33,16 @@ const handleUserJoin = async (userId, socket) => {
     socket.on('close', () => {
         if(onlineUsers.get(userId).sockets.length === 1){
             userFriendsCache.forEach((friendList, id) => {
-                friendList.forEach((friend) => {
-                    if(friend.id == userId){
+                friendList.forEach((friendship) => {
+                    if(friendship.friend.id == userId){
                         onlineUsers.get(id).
                             sockets.forEach((socket) => 
-                                socket.send(JSON.stringify({type: 'FRIEND_LEFT', data: {friendId: userId}})))
+                                socket.send(JSON.stringify({type: 'FRIEND_LEFT', data: {id: friendship.id}})))
                     }
                 })
                
             })
-            onlineUsers.delete(userId);
+            onlineUsers.delete(userId); 
             userFriendsCache.delete(userId);
             return;
         }
@@ -78,20 +51,75 @@ const handleUserJoin = async (userId, socket) => {
 }
 
 const sendOnlineFriends = (userId, socket) => {
-    const onlineFriends = userFriendsCache.get(userId).filter((friend) => onlineUsers.has(friend.id))
-    socket.send(JSON.stringify({type: 'ONLINE_USERS_LIST', data: Array.from(onlineFriends)}))
+    if(!userFriendsCache.has(userId)){
+        generateUserFriendsCache(userId)
+    }
+
+    const onlineFriends = userFriendsCache.get(userId).filter((friendship) => onlineUsers.has(friendship.friend.id))
+    const onlineFriendsIds = onlineFriends.map((friendship) => friendship.id)
+    socket.send(JSON.stringify({type: 'ONLINE_USERS_LIST', data: Array.from(onlineFriendsIds)}))
 }
 
 const broadcastUserStatus = (user) => {
     userFriendsCache.forEach((friendList, id) => {
-        friendList.forEach((friend) => {
-            if(friend.id == user.id){
+        friendList.forEach((friendship) => {
+            if(friendship.friend.id == user.id){
                 onlineUsers.get(id).
                     sockets.forEach((socket) => 
-                        socket.send(JSON.stringify({type: 'FRIEND_JOINED', data: user})))
+                        socket.send(JSON.stringify({type: 'FRIEND_JOINED', data: {id: friendship.id}})))
             }
         })
     })
+}
+
+const removeFriend = (data) => {
+    const { userId, friendId, friendshipId } = data;
+    if(onlineUsers.has(friendId)){
+        userFriendsCache.get(friendId).splice(userFriendsCache.get(friendId).indexOf({id: friendshipId, friend: {id: userId}}), 1)
+        onlineUsers.get(friendId).sockets.forEach((socket) => {
+            sendOnlineFriends(friendId, socket)
+            socket.send(JSON.stringify({type: 'UPDATE_FRIENDS'}))
+        });
+
+    }
+    userFriendsCache.get(userId).splice(userFriendsCache.get(userId).indexOf({id: friendshipId, friend: {id: friendId}}), 1)
+    onlineUsers.get(userId).sockets.forEach((socket) => {
+        sendOnlineFriends(userId, socket)
+        socket.send(JSON.stringify({type: 'UPDATE_FRIENDS'}))
+    });
+}
+
+const generateUserFriendsCache = async (userId) => {
+    const query = await prisma.friendship.findMany({
+        where: {
+        accepted: true,
+        OR: [
+            { userFirstId: userId },
+            { userSecondId: userId }
+        ]
+        },
+        select: {
+        id: true,
+        userFirst: { select: {
+            id: true,
+            name: true,
+            image: true,
+        }},
+        userSecond: { select: {
+            id: true,
+            name: true,
+            image: true,
+        }}
+        }
+    });
+    
+  
+
+    const friendsList = query.map(friendship => 
+        friendship.userFirst.id === userId ? { id: friendship.id, friend: friendship.userSecond} : { id: friendship.id, friend: friendship.userFirst}
+    );
+    //userFriendsCache.delete(userId);
+    userFriendsCache.set(userId, friendsList);
 }
 
 const handleMessage = async (message, socket) => {
@@ -126,14 +154,19 @@ const handleMessage = async (message, socket) => {
                 privateChats.set(message.data.chatId, { members, messages: []})
             }
             break;
-        case 'UPDATED_REQUEST_STATE':
-            socket.send(JSON.stringify({type: 'UPDATE_FRIEND_REQUESTS'}))
-            onlineUsers.get(message.data.friendId)?.sockets.forEach((socket) => socket.send(JSON.stringify({type: 'UPDATE_FRIEND_REQUESTS'})))
+        case 'UPDATED_FRIENDSHIP_STATE':
+            socket.send(JSON.stringify({type: 'UPDATE_FRIENDS'}))
+            if(message.data.userId) sendOnlineFriends(message.data.userId, socket);
+            onlineUsers.get(message.data.friendId)?.sockets.forEach((socket) => {
+                socket.send(JSON.stringify({type: 'UPDATE_FRIENDS'}))
+                sendOnlineFriends(message.data.friendId, socket)
+            })
             break;
+        case 'REMOVE_FRIEND':
+            removeFriend(message.data, socket)//arruma essa porra te vira fdp
         default:
             break;
     }
 }
-
 
 module.exports = { handleMessage }

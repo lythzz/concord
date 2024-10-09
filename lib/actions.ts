@@ -108,9 +108,7 @@ export const acceptFriendRequest = async (friendshipId: string) => {
             },
             data: {
                 accepted: true,
-                chat: {
-                    create: {}
-                }
+                
             }
         })
         return { success: true }
@@ -159,4 +157,52 @@ export const filterOnlineUsers = async (userId: string, onlineUsers: string[]) =
       );
     const onlineFriends = friendsList.filter((friend) => onlineUsers.includes(friend.id))
     
+}
+
+export const getFriends = async () => {
+    const session = await auth();
+    const userId = session?.user?.id;
+
+    const query = await db.friendship.findMany({
+        where: {
+          accepted: true,
+          OR: [
+            { userFirstId: userId },
+            { userSecondId: userId }
+          ]
+        },
+        select: {
+            id:true,
+            userFirst: { select: {
+                id: true,
+                name: true,
+                image: true,
+            }},
+            userSecond: { select: {
+                id: true,
+                name: true,
+                image: true,
+            }}
+            }
+        });
+      
+      const friendsList = query.map(friendship => 
+        friendship.userFirst.id === userId ? { id: friendship.id, friend: friendship.userSecond} : { id: friendship.id, friend: friendship.userFirst}
+      );
+
+    return {friendsList};
+}
+
+export const removeFriend = async (friendshipId: string) => {
+    try {
+        await db.friendship.delete({
+            where: {
+                id: friendshipId
+            }
+        })
+        return { success: true }
+    } catch (error) {
+        console.log(error)
+        return { error: true }
+    }
 }

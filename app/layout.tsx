@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { WebSocketProvider } from "@/components/ws-context-provider";
 import { SessionProvider } from "next-auth/react";
 import { auth } from "@/auth";
+import { FriendsProvider } from "@/components/friends-context-provider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -25,11 +26,13 @@ export default async function RootLayout({
     <html lang="en">
      <SessionProvider session={session}>
       <WebSocketProvider>
-          <body className={inter.className}>
-            <SpeedInsights />
-            {children}
-            <Toaster/>
-          </body>
+        <FriendsProvider>
+            <body className={inter.className}>
+              <SpeedInsights />
+              {children}
+              <Toaster/>
+            </body>
+          </FriendsProvider>
         </WebSocketProvider>  
      </SessionProvider>
     </html>

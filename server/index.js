@@ -18,9 +18,6 @@ app.get('/', (req, res) => {
       const parsedMessage = JSON.parse(message);
       handleMessage(parsedMessage, ws);
     });
-  
-    
-
   });
   
 const PORT = 8080;

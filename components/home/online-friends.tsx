@@ -1,7 +1,21 @@
+'use client'
+
 import { CiSearch } from "react-icons/ci";
 import { Input } from "../ui/input";
+import { FriendItem } from "./user-item";
+import { ScrollArea } from "../ui/scroll-area";
 
-export default function OnlineFriends() {
+interface Friendship {
+    id: string;
+    friend: {
+        id: string;
+        name: string;
+        image: string;
+        online?: boolean;
+    }
+}
+
+export default function FriendsPage({ friendships, onlineOnly }: { friendships: undefined | Friendship[], onlineOnly?: boolean}) {
     return (
         <div className="w-full h-full flex flex-col p-6">
             <div className="w-full flex items-center relative">
@@ -12,6 +26,13 @@ export default function OnlineFriends() {
             />
             <CiSearch className="absolute left-2 text-2xl"/>
             </div>
+            <ScrollArea className="my-6 max-h-[82%]">
+                {friendships && friendships.map((friendship => {
+                    if(onlineOnly && !friendship.friend.online) return null
+                    return <FriendItem friendship={friendship} key={friendship.id} online={friendship.friend.online}/>
+                }))}
+               
+            </ScrollArea>
         </div>
     )
 }
